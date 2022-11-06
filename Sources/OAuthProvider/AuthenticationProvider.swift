@@ -7,7 +7,7 @@
 
 import Foundation
 
-internal protocol AuthenticationProvider {
+public protocol AuthenticationProvider {
     associatedtype Credentials
     func createSignedRequest(from urlRequest: URLRequest, credentials: Credentials) -> URLRequest
 }

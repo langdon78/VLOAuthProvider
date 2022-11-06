@@ -12,7 +12,7 @@ import Foundation
 /// https://tools.ietf.org/html/rfc5849#section-3.4.2
 
 public class OAuthProvider: AuthenticationProvider {
-    typealias Credentials = OAuthCredentials
+    public typealias Credentials = OAuthCredentials
     typealias OAuthQueryParameterValue = String
     typealias OAuthQueryParameters = [OAuthQueryParameterKey: OAuthQueryParameterValue]
     
@@ -101,7 +101,7 @@ public class OAuthProvider: AuthenticationProvider {
         return urlComponents.url!
     }
     
-    func createSignedRequest(from urlRequest: URLRequest, credentials: Credentials) -> URLRequest {
+    public func createSignedRequest(from urlRequest: URLRequest, credentials: Credentials) -> URLRequest {
         guard let url = urlRequest.url,
             let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
             let httpMethod = urlRequest.httpMethod
