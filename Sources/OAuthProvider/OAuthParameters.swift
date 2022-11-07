@@ -38,7 +38,7 @@ public struct OAuthParameters {
     }
     
     internal var parameterMap: [OAuthQueryParameterKey: String] {
-        var result: [OAuthQueryParameterKey: String?] = [
+        let result: [OAuthQueryParameterKey: String?] = [
             .oauth_consumer_key: consumerKey,
             .oauth_nonce: oauthNonce,
             .oauth_timestamp: oauthTimestamp,

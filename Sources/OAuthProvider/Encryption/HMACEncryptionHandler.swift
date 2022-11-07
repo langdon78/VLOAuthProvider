@@ -12,7 +12,7 @@ import CommonCrypto
 /// using supported methods from
 /// CommonCrypto library (i.e. MD5, SHA1 etc.)
 public class HMACEncryptionHandler: EncryptionHandler {
-
+    
     /// Function to calculate a hash-based message authentication code (HMAC)
     ///
     /// - Parameters:
@@ -22,29 +22,33 @@ public class HMACEncryptionHandler: EncryptionHandler {
     /// - Returns: the HMAC encrypted string or EncryptionError
     
     public static func encrypt(
-            _ message:  String,
-            using hash: HashAlgorithmType,
-            with key:   String
-        ) -> Result<String, EncryptionError>  {
+        _ message:  String,
+        using hash: HashAlgorithmType,
+        with key:   String
+    ) -> Result<String, EncryptionError>  {
         
         // Exit early if parameters malformed or type is plaintext
         guard !message.isEmpty else { return .failure(.emptyMessage) }
         guard !key.isEmpty else { return .failure(.emptyKey) }
-        guard case .plaintext = hash else {
+        
+        // Passthrough message on plaintext encryption type
+        if case .plaintext = hash {
             return .success(message)
         }
+        
+        // If algorithm is present, apply encryption
         guard let hashAlgorithm = hash.algorithm else {
             return .failure(.unexpectedHashType)
         }
         
         // C-style function call
-            var result = hashAlgorithm.allocated
+        var result = hashAlgorithm.allocated
         CCHmac(hashAlgorithm.ccIdentifier,
-                key,
-                key.count,
-                message,
-                message.count,
-                &result)
+               key,
+               key.count,
+               message,
+               message.count,
+               &result)
         // Replace "+" character with urlencoded value
         return .success(Data(result).base64EncodedString())
     }
