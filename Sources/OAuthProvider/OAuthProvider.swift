@@ -77,10 +77,15 @@ public class OAuthProvider: AuthenticationProvider {
         let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams,
                                            httpMethod: httpMethod,
                                            parameters: parameters)
-        let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
-        var requestSigned = URLRequest(url: urlSigned)
-        requestSigned.httpMethod = httpMethod
-        return requestSigned
+        if parameters.oauthSignatureMethod != .plaintext {
+            let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
+            var requestSigned = URLRequest(url: urlSigned)
+            requestSigned.httpMethod = httpMethod
+            return requestSigned
+        } else {
+            return URLRequest(url: urlComponentsWithAuthParams.url!)
+        }
+
     }
     
 }
