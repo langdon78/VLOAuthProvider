@@ -27,13 +27,19 @@ public class HMACEncryptionHandler: EncryptionHandler {
             with key:   String
         ) -> Result<String, EncryptionError>  {
         
-        // Exit early if parameters malformed
+        // Exit early if parameters malformed or type is plaintext
         guard !message.isEmpty else { return .failure(.emptyMessage) }
         guard !key.isEmpty else { return .failure(.emptyKey) }
+        guard case .plaintext = hash else {
+            return .success(message)
+        }
+        guard let hashAlgorithm = hash.algorithm else {
+            return .failure(.unexpectedHashType)
+        }
         
         // C-style function call
-        var result = hash.algorithm.allocated
-        CCHmac(hash.algorithm.ccIdentifier,
+            var result = hashAlgorithm.allocated
+        CCHmac(hashAlgorithm.ccIdentifier,
                 key,
                 key.count,
                 message,
@@ -48,4 +54,5 @@ public class HMACEncryptionHandler: EncryptionHandler {
 public enum EncryptionError: Error {
     case emptyMessage
     case emptyKey
+    case unexpectedHashType
 }

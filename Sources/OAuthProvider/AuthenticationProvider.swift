@@ -8,6 +8,6 @@
 import Foundation
 
 public protocol AuthenticationProvider {
-    associatedtype Credentials
-    func createSignedRequest(from urlRequest: URLRequest, credentials: Credentials) -> URLRequest
+    func createSignedRequest(from urlRequest: URLRequest,
+                             parameters: OAuthParameters) -> URLRequest
 }

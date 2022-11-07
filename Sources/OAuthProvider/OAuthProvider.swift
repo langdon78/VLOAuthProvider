@@ -12,26 +12,6 @@ import Foundation
 /// https://tools.ietf.org/html/rfc5849#section-3.4.2
 
 public class OAuthProvider: AuthenticationProvider {
-    public typealias Credentials = OAuthCredentials
-    typealias OAuthQueryParameterValue = String
-    typealias OAuthQueryParameters = [OAuthQueryParameterKey: OAuthQueryParameterValue]
-    
-    enum OAuthQueryParameterKey: String, CaseIterable {
-        case oauth_signature_method
-        case oauth_timestamp
-        case oauth_nonce
-        case oauth_version
-        case oauth_consumer_key
-        case oauth_signature
-    }
-    
-    var currentDateString: () -> String = {
-        return String(Int(Date().timeIntervalSince1970)) }
-    
-    var nonceUUIDString: () -> String = {
-        return UUID().uuidString
-    }
-    
     let encryptionHandler: EncryptionHandler.Type
     
     public init(encryptionHandler: EncryptionHandler.Type = HMACEncryptionHandler.self) {
@@ -45,24 +25,9 @@ public class OAuthProvider: AuthenticationProvider {
         return str.addingPercentEncoding(withAllowedCharacters: allowed) ?? str
     }
     
-    private func defaultOAuthQueryParameters() -> OAuthQueryParameters {
-        return [
-            .oauth_signature_method: "HMAC-SHA1",
-            .oauth_timestamp: currentDateString(),
-            .oauth_nonce: nonceUUIDString(),
-            .oauth_version: "1.0"
-        ]
-    }
-    
-    func preSignatureOAuthQueryItems(key: String) -> [URLQueryItem] {
-        var defaultParams = defaultOAuthQueryParameters()
-        defaultParams[.oauth_consumer_key] = key
-        return defaultParams.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
-    }
-    
-    func addOAuthParams(for urlComponents: URLComponents, credentials: Credentials) -> URLComponents {
+    func addOAuthParams(for urlComponents: URLComponents, parameters: OAuthParameters) -> URLComponents {
         var urlComponents = urlComponents
-        let oAuthQueryItems = preSignatureOAuthQueryItems(key: credentials.consumerKey)
+        let oAuthQueryItems = parameters.queryItems
         if var queryItems = urlComponents.queryItems {
             queryItems.append(contentsOf: oAuthQueryItems)
             urlComponents.queryItems = queryItems
@@ -82,9 +47,9 @@ public class OAuthProvider: AuthenticationProvider {
         return "\(httpMethod)&\(rfc3986Encode(urlComponents.baseURLStringWithPath))&\(params)"
     }
     
-    func calculateSignature(urlComponents: URLComponents, httpMethod: String, credentials: Credentials) -> String {
+    func calculateSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) -> String {
         let hashable = hashString(httpMethod: httpMethod, urlComponents: urlComponents)
-        let result = encryptionHandler.encrypt(hashable, using: .sha1, with: credentials.rfc5849FormattedSecret)
+        let result = encryptionHandler.encrypt(hashable, using: parameters.oauthSignatureMethod.hashAlgorithmType, with: parameters.rfc5849FormattedSecret)
         
         switch result {
         case .success(let hashed):
@@ -96,20 +61,22 @@ public class OAuthProvider: AuthenticationProvider {
     
     func addSignature(with hashed: String, to urlComponents: URLComponents) -> URL {
         var urlComponents = urlComponents
-        let signatureQueryItem = URLQueryItem(name: OAuthQueryParameterKey.oauth_signature.rawValue, value: hashed)
+        let signatureQueryItem = URLQueryItem(name: OAuthParameters.OAuthQueryParameterKey.oauth_signature.rawValue, value: hashed)
         urlComponents.queryItems?.append(signatureQueryItem)
         return urlComponents.url!
     }
     
-    public func createSignedRequest(from urlRequest: URLRequest, credentials: Credentials) -> URLRequest {
+    public func createSignedRequest(from urlRequest: URLRequest, parameters: OAuthParameters) -> URLRequest {
         guard let url = urlRequest.url,
             let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
             let httpMethod = urlRequest.httpMethod
             else { return urlRequest }
         
-        var urlComponentsWithAuthParams = addOAuthParams(for: urlComponents, credentials: credentials)
+        var urlComponentsWithAuthParams = addOAuthParams(for: urlComponents, parameters: parameters)
         urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
-        let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams, httpMethod: httpMethod, credentials: credentials)
+        let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams,
+                                           httpMethod: httpMethod,
+                                           parameters: parameters)
         let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
         var requestSigned = URLRequest(url: urlSigned)
         requestSigned.httpMethod = httpMethod
