@@ -49,7 +49,7 @@ public class OAuthProvider: AuthenticationProvider {
     
     func calculateSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) -> String {
         let hashable = hashString(httpMethod: httpMethod, urlComponents: urlComponents)
-        let result = encryptionHandler.encrypt(hashable, using: parameters.oauthSignatureMethod.hashAlgorithmType, with: parameters.rfc5849FormattedSecret)
+        let result = encryptionHandler.encrypt(hashable, using: .sha1, with: parameters.rfc5849FormattedSecret)
         
         switch result {
         case .success(let hashed):
