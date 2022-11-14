@@ -18,14 +18,11 @@ public struct OAuthParameters {
     public var oauthTimestamp: String
     public var oauthCallback: URL?
     public var oauthToken: String?
+    public var oauthVerifier: String?
     
     public var rfc5849FormattedSecret: String {
         // https://tools.ietf.org/html/rfc5849#section-3.4.4
         return "\(consumerSecret)&\(userSecret ?? "")"
-    }
-    
-    public var userVerifier: String? {
-        userSecret
     }
     
     internal var parameterMap: [OAuthQueryParameterKey: String] {
@@ -34,7 +31,7 @@ public struct OAuthParameters {
             .oauth_nonce: oauthNonce,
             .oauth_timestamp: oauthTimestamp,
             .oauth_signature_method: oauthSignatureMethod.rawValue,
-            .oauth_verifier: userVerifier,
+            .oauth_verifier: oauthVerifier,
             .oauth_version: oauthVersion,
             .oauth_callback: oauthCallback?.absoluteString,
             .oauth_token: oauthToken
@@ -55,7 +52,8 @@ public struct OAuthParameters {
                 oauthNonce: String = UUID().uuidString,
                 oauthTimestamp: String = String(Int(Date().timeIntervalSince1970)),
                 oauthCallback: URL? = nil,
-                oauthToken: String? = nil) {
+                oauthToken: String? = nil,
+                oauthVerifier: String? = nil) {
         self.consumerKey = consumerKey
         self.consumerSecret = consumerSecret
         self.userKey = userKey
@@ -66,6 +64,7 @@ public struct OAuthParameters {
         self.oauthTimestamp = oauthTimestamp
         self.oauthCallback = oauthCallback
         self.oauthToken = oauthToken
+        self.oauthVerifier = oauthVerifier
     }
 }
 

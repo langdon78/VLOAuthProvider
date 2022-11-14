@@ -53,7 +53,11 @@ public class OAuthProvider: AuthenticationProvider {
         
         switch result {
         case .success(let hashed):
-            return rfc3986Encode(parameters.consumerSecret + "&" + hashed)
+            if parameters.oauthSignatureMethod == .plaintext {
+                return parameters.rfc5849FormattedSecret
+            } else {
+                return rfc3986Encode(hashed)
+            }
         case .failure(let error):
             fatalError(error.localizedDescription)
         }
