@@ -68,24 +68,19 @@ public class OAuthProvider: AuthenticationProvider {
     
     public func createSignedRequest(from urlRequest: URLRequest, parameters: OAuthParameters) -> URLRequest {
         guard let url = urlRequest.url,
-            let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
-            let httpMethod = urlRequest.httpMethod
-            else { return urlRequest }
+              let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let httpMethod = urlRequest.httpMethod
+        else { return urlRequest }
         
         var urlComponentsWithAuthParams = addOAuthParams(for: urlComponents, parameters: parameters)
         urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
         let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams,
                                            httpMethod: httpMethod,
                                            parameters: parameters)
-//        if parameters.oauthSignatureMethod != .plaintext {
-            let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
-            var requestSigned = URLRequest(url: urlSigned)
-            requestSigned.httpMethod = httpMethod
-            return requestSigned
-//        } else {
-//            return URLRequest(url: urlComponentsWithAuthParams.url!)
-//        }
-
+        let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
+        var requestSigned = URLRequest(url: urlSigned)
+        requestSigned.httpMethod = httpMethod
+        return requestSigned
     }
     
 }
