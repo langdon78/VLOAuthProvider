@@ -32,8 +32,9 @@ public class HMACEncryptionHandler: EncryptionHandler {
         guard !key.isEmpty else { return .failure(.emptyKey) }
         
         // Passthrough message on plaintext encryption type
-        if case .plaintext = hash {
-            return .success(message)
+        if case .plaintext = hash,
+           let data = message.data(using: .utf8) {
+            return .success(data.base64EncodedString())
         }
         
         // If algorithm is present, apply encryption

@@ -19,15 +19,6 @@ public struct OAuthParameters {
     public var oauthCallback: URL?
     public var oauthToken: String?
     
-    public var oauthSignature: String {
-        switch oauthSignatureMethod {
-        case .plaintext:
-            return consumerSecret + "&"
-        default:
-            return ""
-        }
-    }
-    
     public var rfc5849FormattedSecret: String {
         // https://tools.ietf.org/html/rfc5849#section-3.4.4
         return "\(consumerSecret)&\(userSecret ?? "")"
@@ -43,7 +34,6 @@ public struct OAuthParameters {
             .oauth_nonce: oauthNonce,
             .oauth_timestamp: oauthTimestamp,
             .oauth_signature_method: oauthSignatureMethod.rawValue,
-            .oauth_signature: oauthSignature,
             .oauth_verifier: userVerifier,
             .oauth_version: oauthVersion,
             .oauth_callback: oauthCallback?.absoluteString,
