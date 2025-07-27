@@ -1,5 +1,5 @@
 import XCTest
-@testable import OAuthProvider
+@testable import VLOAuthProvider
 
 final class OAuthProviderTests: XCTestCase {
     func testExample() throws {
