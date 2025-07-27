@@ -10,9 +10,8 @@ import Foundation
 /// Used to identify and authenticate the authorization request
 ///
 /// # Reference
-/// [RFC 5849 1.1]
-/// (https://www.rfc-editor.org/rfc/rfc5849#section-1.1)
-struct TemporaryCredentials {
+/// [RFC 5849 1.1](https://www.rfc-editor.org/rfc/rfc5849#section-1.1)
+public struct TemporaryCredentials {
     var requestToken: String
     var requestSecret: String
 }

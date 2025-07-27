@@ -8,7 +8,10 @@
 import Foundation
 
 /// Used to identify and authenticate the access grant
-struct TokenCredentials {
+///
+/// # Reference
+/// [RFC 5849 1.1](https://www.rfc-editor.org/rfc/rfc5849#section-1.1)
+public struct TokenCredentials {
     var accessToken: String
     var accessSecret: String
 }

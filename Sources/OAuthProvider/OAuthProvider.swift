@@ -75,7 +75,7 @@ public class OAuthProvider: AuthenticationProvider {
               let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let httpMethod = urlRequest.httpMethod
         else { return urlRequest }
-        
+        _ = ClientCredentials(consumerKey: "", consumerSecret: "")
         var urlComponentsWithAuthParams = addOAuthParams(for: urlComponents, parameters: parameters)
         urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
         let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams,
