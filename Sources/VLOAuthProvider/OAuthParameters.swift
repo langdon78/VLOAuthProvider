@@ -19,10 +19,16 @@ public struct OAuthParameters {
     public var oauthCallback: URL?
     public var oauthToken: String?
     public var oauthVerifier: String?
+    public var rsaPrivateKey: String?
     
     public var rfc5849FormattedSecret: String {
-        // https://tools.ietf.org/html/rfc5849#section-3.4.4
-        return "\(consumerSecret)&\(userSecret ?? "")"
+        switch oauthSignatureMethod {
+        case .rsaSha1:
+            return rsaPrivateKey ?? "" // RSA uses private key directly
+        default:
+            // https://tools.ietf.org/html/rfc5849#section-3.4.4
+            return "\(consumerSecret)&\(userSecret ?? "")"
+        }
     }
     
     internal var parameterMap: [OAuthQueryParameterKey: String] {

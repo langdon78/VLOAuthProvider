@@ -49,14 +49,16 @@ public class OAuthProvider: AuthenticationProvider {
     
     func calculateSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) -> String {
         let hashable = hashString(httpMethod: httpMethod, urlComponents: urlComponents)
+        let encryptionHandler: EncryptionHandler.Type = parameters.oauthSignatureMethod == .rsaSha1 ? RSAEncryptionHandler.self : HMACEncryptionHandler.self
         let result = encryptionHandler.encrypt(hashable, using: parameters.oauthSignatureMethod.hashAlgorithmType, with: parameters.rfc5849FormattedSecret)
         
         switch result {
         case .success(let hashed):
-            if parameters.oauthSignatureMethod == .plaintext {
-                return parameters.rfc5849FormattedSecret
-            } else {
+            switch parameters.oauthSignatureMethod {
+            case .hmacSha1:
                 return rfc3986Encode(hashed)
+            default:
+                return parameters.rfc5849FormattedSecret
             }
         case .failure(let error):
             fatalError(error.localizedDescription)

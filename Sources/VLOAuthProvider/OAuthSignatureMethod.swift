@@ -23,7 +23,8 @@ extension OAuthSignatureMethod {
     internal var hashAlgorithmType: HashAlgorithmType {
         switch self {
         case .plaintext: return .plaintext
-        default: return .sha1
+        case .hmacSha1: return .sha1
+        case .rsaSha1: return .rsaSha1
         }
     }
 }

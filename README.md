@@ -1,1 +1,1 @@
-# oauth-provider
+# VL (Very Light 🪶) OAuth Provider
