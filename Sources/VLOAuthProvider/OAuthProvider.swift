@@ -61,11 +61,11 @@ public class OAuthProvider: AuthenticationProvider {
         }
     }
     
-    func addSignature(with hashed: String, to urlComponents: URLComponents) -> URL {
+    func addSignature(with hashed: String, to urlComponents: URLComponents) -> URLComponents {
         var urlComponents = urlComponents
         let signatureQueryItem = URLQueryItem(name: OAuthParameters.OAuthQueryParameterKey.oauth_signature.rawValue, value: hashed)
         urlComponents.queryItems?.append(signatureQueryItem)
-        return urlComponents.url!
+        return urlComponents
     }
     
     func createRequestWithQueryParams(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
@@ -80,14 +80,25 @@ public class OAuthProvider: AuthenticationProvider {
                                            httpMethod: httpMethod,
                                            parameters: parameters)
         let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
-        var signedRequest = URLRequest(url: urlSigned)
+        var signedRequest = URLRequest(url: urlSigned.url!)
         signedRequest.httpMethod = httpMethod
         return signedRequest
     }
     
     func createRequestWithAuthorizationHeader(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
         var updatedRequest = request
-        let flattenedParams = parameters.queryItems.reduce(into: "OAuth ") { result, item in
+        guard let url = request.url,
+              let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let httpMethod = request.httpMethod
+        else { return request }
+        var urlComponentsWithAuthParams = addOAuthParamsToQuery(for: urlComponents, parameters: parameters)
+        urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
+        let signature = try makeSignature(urlComponents: urlComponentsWithAuthParams,
+                                           httpMethod: httpMethod,
+                                           parameters: parameters)
+        let urlCompSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
+        
+        let flattenedParams = urlCompSigned.queryItems!.reduce(into: "OAuth ") { result, item in
             result.append("\(item.name)=\"\(item.value ?? "")\"")
             if item != parameters.queryItems.last {
                 result.append(",")
