@@ -25,20 +25,15 @@ public class HMACEncryptionHandler: EncryptionHandler {
         _ message:  String,
         using hash: HashAlgorithmType,
         with key:   String
-    ) -> Result<String, EncryptionError>  {
+    ) throws -> String  {
         
         // Exit early if parameters malformed or type is plaintext
-        guard !message.isEmpty else { return .failure(.emptyMessage) }
-        guard !key.isEmpty else { return .failure(.emptyKey) }
-        
-        // Passthrough message on plaintext encryption type
-        if case .plaintext = hash {
-            return .success(message)
-        }
+        guard !message.isEmpty else { throw EncryptionError.emptyMessage }
+        guard !key.isEmpty else { throw EncryptionError.emptyKey }
         
         // If algorithm is present, apply encryption
         guard let hashAlgorithm = hash.algorithm else {
-            return .failure(.unexpectedHashType)
+            throw EncryptionError.unexpectedHashType
         }
         
         // C-style function call
@@ -50,16 +45,7 @@ public class HMACEncryptionHandler: EncryptionHandler {
                message.count,
                &result)
         // Replace "+" character with urlencoded value
-        return .success(Data(result).base64EncodedString())
+        return Data(result).base64EncodedString()
     }
     
-}
-
-public enum EncryptionError: Error {
-    case emptyMessage
-    case emptyKey
-    case unexpectedHashType
-    case invalidPrivateKey
-    case encodingError
-    case signingFailed
 }
