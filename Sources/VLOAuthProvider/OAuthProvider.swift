@@ -88,7 +88,7 @@ public class OAuthProvider: AuthenticationProvider {
     func createRequestWithAuthorizationHeader(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
         var updatedRequest = request
         let flattenedParams = parameters.queryItems.reduce(into: "OAuth ") { result, item in
-            result.append("\(item.name)=\"\(item.value ?? "")\"")
+            result.append("\(item.name)=\(item.value ?? "")")
         }
         updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
         return updatedRequest
