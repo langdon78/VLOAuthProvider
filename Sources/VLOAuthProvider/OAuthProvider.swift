@@ -89,6 +89,9 @@ public class OAuthProvider: AuthenticationProvider {
         var updatedRequest = request
         let flattenedParams = parameters.queryItems.reduce(into: "OAuth ") { result, item in
             result.append("\(item.name)=\(item.value ?? "")")
+            if item != parameters.queryItems.last {
+                result.append(", ")
+            }
         }
         updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
         return updatedRequest
