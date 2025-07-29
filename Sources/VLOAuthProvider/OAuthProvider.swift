@@ -25,7 +25,7 @@ public class OAuthProvider: AuthenticationProvider {
         return str.addingPercentEncoding(withAllowedCharacters: allowed) ?? str
     }
     
-    func addOAuthParams(for urlComponents: URLComponents, parameters: OAuthParameters) -> URLComponents {
+    func addOAuthParamsToQuery(for urlComponents: URLComponents, parameters: OAuthParameters) -> URLComponents {
         var urlComponents = urlComponents
         let oAuthQueryItems = parameters.queryItems
         if var queryItems = urlComponents.queryItems {
@@ -42,26 +42,22 @@ public class OAuthProvider: AuthenticationProvider {
         return urlComponents.queryItems?.sorted { $0.name < $1.name }
     }
     
-    func hashString(httpMethod: String, urlComponents: URLComponents) -> String {
+    func buildEncodedSignature(httpMethod: String, urlComponents: URLComponents) -> String {
         let params = rfc3986Encode(urlComponents.percentEncodedQuery!)
         return "\(httpMethod)&\(rfc3986Encode(urlComponents.baseURLStringWithPath))&\(params)"
     }
     
-    func calculateSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) -> String {
-        let hashable = hashString(httpMethod: httpMethod, urlComponents: urlComponents)
-        let encryptionHandler: EncryptionHandler.Type = parameters.oauthSignatureMethod == .rsaSha1 ? RSAEncryptionHandler.self : HMACEncryptionHandler.self
-        let result = encryptionHandler.encrypt(hashable, using: parameters.oauthSignatureMethod.hashAlgorithmType, with: parameters.rfc5849FormattedSecret)
-        
-        switch result {
-        case .success(let hashed):
-            switch parameters.oauthSignatureMethod {
-            case .hmacSha1:
-                return rfc3986Encode(hashed)
-            default:
-                return parameters.rfc5849FormattedSecret
-            }
-        case .failure(let error):
-            fatalError(error.localizedDescription)
+    func makeSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) throws -> String {
+        let hashable = buildEncodedSignature(httpMethod: httpMethod, urlComponents: urlComponents)
+        let signatureKey = "\(parameters.consumerSecret)&\(parameters.requestSecret ?? "")"
+        switch parameters.signatureMethod {
+        case .hmacSha1:
+            let hashed = try HMACEncryptionHandler.encrypt(hashable, with: signatureKey)
+            return rfc3986Encode(hashed)
+        case .rsaSha1:
+            return try RSAEncryptionHandler.encrypt(hashable, with: parameters.rsaPrivateKey ?? "")
+        case .plaintext:
+            return signatureKey
         }
     }
     
@@ -72,21 +68,43 @@ public class OAuthProvider: AuthenticationProvider {
         return urlComponents.url!
     }
     
-    public func createSignedRequest(from urlRequest: URLRequest, parameters: OAuthParameters) -> URLRequest {
-        guard let url = urlRequest.url,
+    func createRequestWithQueryParams(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
+        guard let url = request.url,
               let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let httpMethod = urlRequest.httpMethod
-        else { return urlRequest }
-        _ = ClientCredentials(consumerKey: "", consumerSecret: "")
-        var urlComponentsWithAuthParams = addOAuthParams(for: urlComponents, parameters: parameters)
-        urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
-        let signature = calculateSignature(urlComponents: urlComponentsWithAuthParams,
+              let httpMethod = request.httpMethod
+        else { return request }
+        
+        var urlComponentsWithAuthParams = addOAuthParamsToQuery(for: urlComponents, parameters: parameters)
+        let signature = try makeSignature(urlComponents: urlComponentsWithAuthParams,
                                            httpMethod: httpMethod,
                                            parameters: parameters)
         let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
-        var requestSigned = URLRequest(url: urlSigned)
-        requestSigned.httpMethod = httpMethod
-        return requestSigned
+        var signedRequest = URLRequest(url: urlSigned)
+        signedRequest.httpMethod = httpMethod
+        return signedRequest
     }
     
+    func createRequestWithAuthorizationHeader(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
+        var updatedRequest = request
+        let flattenedParams = parameters.queryItems.reduce(into: "OAuth ") { result, item in
+            result.append("\(item.name)=\"\(item.value ?? "")\"")
+        }
+        updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
+        return updatedRequest
+    }
+    
+    public func createSignedRequest(
+        from urlRequest: URLRequest,
+        with parameters: OAuthParameters,
+        as transmissionType: ParameterTransmissionType
+    ) throws -> URLRequest {
+        switch transmissionType {
+            case .header:
+            return try createRequestWithAuthorizationHeader(request: urlRequest, with: parameters)
+        case .queryString:
+            return try createRequestWithQueryParams(request: urlRequest, with: parameters)
+        case .formData:
+            fatalError("Form data transmission is not yet supported")
+        }
+    }
 }

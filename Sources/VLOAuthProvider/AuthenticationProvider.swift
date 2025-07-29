@@ -9,5 +9,7 @@ import Foundation
 
 public protocol AuthenticationProvider {
     func createSignedRequest(from urlRequest: URLRequest,
-                             parameters: OAuthParameters) -> URLRequest
+                             with parameters: OAuthParameters,
+                             as transmissionType: ParameterTransmissionType
+    ) throws -> URLRequest
 }
