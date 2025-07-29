@@ -75,6 +75,7 @@ public class OAuthProvider: AuthenticationProvider {
         else { return request }
         
         var urlComponentsWithAuthParams = addOAuthParamsToQuery(for: urlComponents, parameters: parameters)
+        urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
         let signature = try makeSignature(urlComponents: urlComponentsWithAuthParams,
                                            httpMethod: httpMethod,
                                            parameters: parameters)
