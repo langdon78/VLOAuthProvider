@@ -49,7 +49,6 @@ public struct OAuthParameters {
                 nonce: String = UUID().uuidString,
                 timestamp: String = String(Int(Date().timeIntervalSince1970)),
                 callback: URL? = nil,
-                token: String? = nil,
                 verifier: String? = nil) {
         self.consumerKey = consumerKey
         self.consumerSecret = consumerSecret
