@@ -100,7 +100,7 @@ public class OAuthProvider: AuthenticationProvider {
         
         let flattenedParams = urlCompSigned.queryItems!.reduce(into: "OAuth ") { result, item in
             result.append("\(item.name)=\"\(item.value ?? "")\"")
-            if item != parameters.queryItems.last {
+            if item != urlCompSigned.queryItems?.last {
                 result.append(",")
             }
         }
