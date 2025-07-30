@@ -12,6 +12,11 @@ import CommonCrypto
 /// using supported methods from
 /// CommonCrypto library (i.e. MD5, SHA1 etc.)
 public class HMACEncryptionHandler: EncryptionHandler {
+    let hashAlgorithmType: HashAlgorithmType
+    
+    init(hashAlgorithmType: HashAlgorithmType = .sha1) {
+        self.hashAlgorithmType = hashAlgorithmType
+    }
     
     /// Function to calculate a hash-based message authentication code (HMAC)
     ///
@@ -20,10 +25,8 @@ public class HMACEncryptionHandler: EncryptionHandler {
     ///   - using: hash function used (one of: .sha1, .md5, .sha224, .sha256, .sha384, .sha512, .sha224)
     ///   - with: the key or secret
     /// - Returns: the HMAC encrypted string or EncryptionError
-    
-    public static func encrypt(
+    public func encrypt(
         _ message:  String,
-        using hash: HashAlgorithmType,
         with key:   String
     ) throws -> String  {
         
@@ -32,20 +35,28 @@ public class HMACEncryptionHandler: EncryptionHandler {
         guard !key.isEmpty else { throw EncryptionError.emptyKey }
         
         // If algorithm is present, apply encryption
-        guard let hashAlgorithm = hash.algorithm else {
+        guard let hashAlgorithm = hashAlgorithmType.algorithm else {
             throw EncryptionError.unexpectedHashType
         }
         
-        // C-style function call
-        var result = hashAlgorithm.allocated
-        CCHmac(hashAlgorithm.ccIdentifier,
-               key,
-               key.count,
-               message,
-               message.count,
-               &result)
-        // Replace "+" character with urlencoded value
-        return Data(result).base64EncodedString()
+        // Convert key and message to .utf8
+        guard let encodedKey = key.data(using: .utf8) else { throw EncryptionError.encodingError }
+        guard let encodedMessage = message.data(using: .utf8) else { throw EncryptionError.encodingError }
+        
+        // CommonCrypto hash function accepts a pointer to key and message bytes
+        return encodedMessage.withUnsafeBytes { messagePtr in
+            encodedKey.withUnsafeBytes { keyPtr in
+                // C-style function call
+                var result = hashAlgorithm.allocated
+                CCHmac(hashAlgorithm.ccIdentifier,
+                       keyPtr.baseAddress,
+                       keyPtr.count,
+                       messagePtr.baseAddress,
+                       messagePtr.count,
+                       &result)
+                return Data(result).base64EncodedString()
+            }
+        }
     }
     
 }

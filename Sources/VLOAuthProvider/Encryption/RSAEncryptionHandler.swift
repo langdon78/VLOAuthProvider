@@ -10,15 +10,20 @@ import Security
 import CommonCrypto
 
 public class RSAEncryptionHandler: EncryptionHandler {
-    public static func encrypt(
+    let hashAlgorithmType: HashAlgorithmType
+    
+    init(hashAlgorithmType: HashAlgorithmType = .sha1) {
+        self.hashAlgorithmType = hashAlgorithmType
+    }
+    
+    public func encrypt(
         _ message: String,
-        using hash: HashAlgorithmType,
         with privateKeyPEM: String
     ) throws -> String {
 
         guard !message.isEmpty else { throw EncryptionError.emptyMessage }
         guard !privateKeyPEM.isEmpty else { throw EncryptionError.emptyKey }
-        guard hash == .sha1 else { throw EncryptionError.unexpectedHashType }
+        guard hashAlgorithmType == .sha1 else { throw EncryptionError.unexpectedHashType }
 
         // Convert PEM to SecKey
         guard let privateKey = createSecKeyFromPEM(privateKeyPEM) else {
@@ -47,7 +52,7 @@ public class RSAEncryptionHandler: EncryptionHandler {
         return signature.base64EncodedString()
     }
 
-    private static func createSecKeyFromPEM(_ pemString: String) -> SecKey? {
+    private func createSecKeyFromPEM(_ pemString: String) -> SecKey? {
         // Remove PEM headers and whitespace
         let cleanPEM = pemString
             .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
@@ -67,7 +72,7 @@ public class RSAEncryptionHandler: EncryptionHandler {
         return SecKeyCreateWithData(keyData as CFData, attributes as CFDictionary, nil)
     }
 
-    private static func sha1Hash(_ data: Data) -> Data {
+    private func sha1Hash(_ data: Data) -> Data {
         var hash = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
         data.withUnsafeBytes {
             _ = CC_SHA1($0.baseAddress, CC_LONG(data.count), &hash)
