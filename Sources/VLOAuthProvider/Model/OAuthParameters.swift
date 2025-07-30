@@ -21,6 +21,9 @@ public struct OAuthParameters {
     public var verifier: String?
     public var rsaPrivateKey: String?
     
+    private let authorizationHeaderPrefix: String = "OAuth "
+    private let authorizationHeaderKey: String = "Authorization"
+    
     internal var parameterMap: OrderedDictionary<OAuthQueryParameterKey, String> {
         var result: OrderedDictionary<OAuthQueryParameterKey, String?> = [
             .oauth_consumer_key: consumerKey,
@@ -77,10 +80,10 @@ public struct OAuthParameters {
         return mutableParameterMap.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
     }
     
-    func add(signature: String, to request: URLRequest ) -> URLRequest {
+    func addToHeader(signature: String, to request: URLRequest ) -> URLRequest {
         var mutableParametersMap = parameterMap
         mutableParametersMap[.oauth_signature] = signature
-        let flattenedParams = mutableParametersMap.reduce(into: "OAuth ") { result, item in
+        let flattenedParams = mutableParametersMap.reduce(into: authorizationHeaderPrefix) { result, item in
             result.append("\(item.key)=\"\(item.value)\"")
             if let lastItem = mutableParametersMap.reversed().first,
                item != lastItem {
@@ -88,7 +91,7 @@ public struct OAuthParameters {
             }
         }
         var updatedRequest = request
-        updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
+        updatedRequest.addValue(flattenedParams, forHTTPHeaderField: authorizationHeaderKey)
         return updatedRequest
     }
 }
