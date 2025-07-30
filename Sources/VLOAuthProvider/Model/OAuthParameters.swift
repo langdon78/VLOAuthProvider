@@ -78,9 +78,11 @@ public struct OAuthParameters {
     }
     
     func add(signature: String, to request: URLRequest ) -> URLRequest {
-        let flattenedParams = parameterMap.reduce(into: "OAuth ") { result, item in
+        var mutableParametersMap = parameterMap
+        mutableParametersMap[.oauth_signature] = signature
+        let flattenedParams = mutableParametersMap.reduce(into: "OAuth ") { result, item in
             result.append("\(item.key)=\"\(item.value)\"")
-            if let lastItem = parameterMap.reversed().first,
+            if let lastItem = mutableParametersMap.reversed().first,
                item != lastItem {
                 result.append(",")
             }
