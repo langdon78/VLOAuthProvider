@@ -12,6 +12,9 @@ import Foundation
 /// https://tools.ietf.org/html/rfc5849#section-3.4.2
 
 public class OAuthProvider: AuthenticationProvider {
+    
+    public init() {}
+    
     private func rfc3986Encode(_ str: String) -> String {
         // https://tools.ietf.org/html/rfc5849#section-3.6
         let unreservedRFC3986 = CharacterSet(charactersIn: "-._~?")
