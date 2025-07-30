@@ -40,6 +40,15 @@ public struct OAuthParameters {
         parameterMap.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
     }
     
+    public var parameterString: String {
+        parameterMap.reduce(into: "") { result, item  in
+            result += "\(item.key)=\(item.value)"
+            if item.key != parameterMap.keys.last! {
+                result += "&"
+            }
+        }
+    }
+    
     public init(consumerKey: String,
                 consumerSecret: String,
                 requestToken: String? = nil,
@@ -60,6 +69,25 @@ public struct OAuthParameters {
         self.timestamp = timestamp
         self.callback = callback
         self.verifier = verifier
+    }
+    
+    func buildQuery(with signature: String) -> [URLQueryItem] {
+        var mutableParameterMap = parameterMap
+        mutableParameterMap[.oauth_signature] = signature
+        return mutableParameterMap.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
+    }
+    
+    func add(signature: String, to request: URLRequest ) -> URLRequest {
+        let flattenedParams = parameterMap.reduce(into: "OAuth ") { result, item in
+            result.append("\(item.key)=\"\(item.value)\"")
+            if let lastItem = parameterMap.reversed().first,
+               item != lastItem {
+                result.append(",")
+            }
+        }
+        var updatedRequest = request
+        updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
+        return updatedRequest
     }
 }
 

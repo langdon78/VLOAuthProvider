@@ -11,5 +11,5 @@ public protocol AuthenticationProvider {
     func createSignedRequest(from urlRequest: URLRequest,
                              with parameters: OAuthParameters,
                              as transmissionType: ParameterTransmissionType
-    ) throws -> URLRequest
+    ) async throws -> URLRequest
 }

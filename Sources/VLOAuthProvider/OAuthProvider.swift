@@ -12,12 +12,6 @@ import Foundation
 /// https://tools.ietf.org/html/rfc5849#section-3.4.2
 
 public class OAuthProvider: AuthenticationProvider {
-    let encryptionHandler: EncryptionHandler.Type
-    
-    public init(encryptionHandler: EncryptionHandler.Type = HMACEncryptionHandler.self) {
-        self.encryptionHandler = encryptionHandler
-    }
-    
     private func rfc3986Encode(_ str: String) -> String {
         // https://tools.ietf.org/html/rfc5849#section-3.6
         let unreservedRFC3986 = CharacterSet(charactersIn: "-._~?")
@@ -25,99 +19,65 @@ public class OAuthProvider: AuthenticationProvider {
         return str.addingPercentEncoding(withAllowedCharacters: allowed) ?? str
     }
     
-    func addOAuthParamsToQuery(for urlComponents: URLComponents, parameters: OAuthParameters) -> URLComponents {
-        var urlComponents = urlComponents
-        let oAuthQueryItems = parameters.queryItems
-        if var queryItems = urlComponents.queryItems {
-            queryItems.append(contentsOf: oAuthQueryItems)
-            urlComponents.queryItems = queryItems
-        } else {
-            urlComponents.queryItems = oAuthQueryItems
-        }
-        return urlComponents
+    func encodeSignature(httpMethod: String, urlString: String, paremterString: String) -> String {
+        return "\(httpMethod)&\(rfc3986Encode(urlString))&\(rfc3986Encode(paremterString))"
     }
     
-    func sortParameters(for urlComponents: URLComponents) -> [URLQueryItem]? {
-        //https://tools.ietf.org/html/rfc5849#section-3.4.1.3.2
-        return urlComponents.queryItems?.sorted { $0.name < $1.name }
+    func makeSignature(
+        httpMethod: String,
+        urlString: String,
+        parameters: OAuthParameters
+    ) async throws -> String {
+        let encodedSignature = encodeSignature(
+            httpMethod: httpMethod,
+            urlString: urlString,
+            paremterString: parameters.parameterString
+        )
+        let hmacSignatureKey = "\(parameters.consumerSecret)&\(parameters.requestSecret ?? "")"
+        let signatureKey = parameters.rsaPrivateKey ?? hmacSignatureKey
+        let encryptor = Encryptor(oauthSignatureMethod: parameters.signatureMethod)
+        return try await encryptor.encrypt(encodedSignature, with: signatureKey)
     }
     
-    func buildEncodedSignature(httpMethod: String, urlComponents: URLComponents) -> String {
-        let params = rfc3986Encode(urlComponents.percentEncodedQuery!)
-        return "\(httpMethod)&\(rfc3986Encode(urlComponents.baseURLStringWithPath))&\(params)"
-    }
-    
-    func makeSignature(urlComponents: URLComponents, httpMethod: String, parameters: OAuthParameters) throws -> String {
-        let hashable = buildEncodedSignature(httpMethod: httpMethod, urlComponents: urlComponents)
-        let signatureKey = "\(parameters.consumerSecret)&\(parameters.requestSecret ?? "")"
-        switch parameters.signatureMethod {
-        case .hmacSha1:
-            let hashed = try HMACEncryptionHandler.encrypt(hashable, with: signatureKey)
-            return rfc3986Encode(hashed)
-        case .rsaSha1:
-            return try RSAEncryptionHandler.encrypt(hashable, with: parameters.rsaPrivateKey ?? "")
-        case .plaintext:
-            return signatureKey
-        }
-    }
-    
-    func addSignature(with hashed: String, to urlComponents: URLComponents) -> URLComponents {
-        var urlComponents = urlComponents
-        let signatureQueryItem = URLQueryItem(name: OAuthParameters.OAuthQueryParameterKey.oauth_signature.rawValue, value: hashed)
-        urlComponents.queryItems?.append(signatureQueryItem)
-        return urlComponents
-    }
-    
-    func createRequestWithQueryParams(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
+    func createRequestWithQueryParams(request: URLRequest, with parameters: OAuthParameters) async throws -> URLRequest {
         guard let url = request.url,
-              let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let httpMethod = request.httpMethod
         else { return request }
         
-        var urlComponentsWithAuthParams = addOAuthParamsToQuery(for: urlComponents, parameters: parameters)
-        urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
-        let signature = try makeSignature(urlComponents: urlComponentsWithAuthParams,
-                                           httpMethod: httpMethod,
-                                           parameters: parameters)
-        let urlSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
-        var signedRequest = URLRequest(url: urlSigned.url!)
-        signedRequest.httpMethod = httpMethod
-        return signedRequest
+        let signature = try await makeSignature(
+            httpMethod: httpMethod,
+            urlString: url.absoluteString,
+            parameters: parameters
+        )
+        let encodedSignature = rfc3986Encode(signature)
+        let signedUrl = url.appending(queryItems: parameters.buildQuery(with: encodedSignature))
+        return URLRequest(url: signedUrl, cachePolicy: request.cachePolicy, timeoutInterval: request.timeoutInterval)
     }
     
-    func createRequestWithAuthorizationHeader(request: URLRequest, with parameters: OAuthParameters) throws -> URLRequest {
-        var updatedRequest = request
+    func createRequestWithAuthorizationHeader(request: URLRequest, with parameters: OAuthParameters) async throws -> URLRequest {
         guard let url = request.url,
-              let urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let httpMethod = request.httpMethod
         else { return request }
-        var urlComponentsWithAuthParams = addOAuthParamsToQuery(for: urlComponents, parameters: parameters)
-        urlComponentsWithAuthParams.queryItems = sortParameters(for: urlComponentsWithAuthParams)
-        let signature = try makeSignature(urlComponents: urlComponentsWithAuthParams,
-                                           httpMethod: httpMethod,
-                                           parameters: parameters)
-        let urlCompSigned = addSignature(with: signature, to: urlComponentsWithAuthParams)
         
-        let flattenedParams = urlCompSigned.queryItems!.reduce(into: "OAuth ") { result, item in
-            result.append("\(item.name)=\"\(item.value ?? "")\"")
-            if item != urlCompSigned.queryItems?.last {
-                result.append(",")
-            }
-        }
-        updatedRequest.addValue(flattenedParams, forHTTPHeaderField: "Authorization")
-        return updatedRequest
+        let signature = try await makeSignature(
+            httpMethod: httpMethod,
+            urlString: url.absoluteString,
+            parameters: parameters
+        )
+        
+        return parameters.add(signature: signature, to: request)
     }
     
     public func createSignedRequest(
         from urlRequest: URLRequest,
         with parameters: OAuthParameters,
         as transmissionType: ParameterTransmissionType
-    ) throws -> URLRequest {
+    ) async throws -> URLRequest {
         switch transmissionType {
             case .header:
-            return try createRequestWithAuthorizationHeader(request: urlRequest, with: parameters)
+            return try await createRequestWithAuthorizationHeader(request: urlRequest, with: parameters)
         case .queryString:
-            return try createRequestWithQueryParams(request: urlRequest, with: parameters)
+            return try await createRequestWithQueryParams(request: urlRequest, with: parameters)
         case .formData:
             fatalError("Form data transmission is not yet supported")
         }

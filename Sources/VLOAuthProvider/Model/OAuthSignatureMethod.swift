@@ -8,9 +8,9 @@
 import Foundation
 
 public enum OAuthSignatureMethod: String {
-    case hmacSha1 = "HMAC-SHA1"
+    case hmac = "HMAC-SHA1"
     case plaintext = "PLAINTEXT"
-    case rsaSha1 = "RSA-SHA1"
+    case rsa = "RSA-SHA1"
 }
 
 extension OAuthSignatureMethod: CustomStringConvertible {
