@@ -40,9 +40,7 @@ public class OAuthProvider: AuthenticationProvider {
             )
         case .queryString:
             return try await createRequestWithQueryParams(
-                url: url,
-                cachePolicy: request.cachePolicy,
-                timeoutInterval: request.timeoutInterval,
+                request: request,
                 signature: signature,
                 with: parameters
             )
@@ -56,15 +54,14 @@ public class OAuthProvider: AuthenticationProvider {
 extension OAuthProvider {
     
     func createRequestWithQueryParams(
-        url: URL,
-        cachePolicy: URLRequest.CachePolicy,
-        timeoutInterval: TimeInterval,
+        request: URLRequest,
         signature: String,
         with parameters: OAuthParameters
     ) async throws -> URLRequest {
+        var signedRequest = request
         let encodedSignature = percentEncoder.encode(signature)
-        let signedUrl = url.appending(queryItems: parameters.buildQuery(with: encodedSignature))
-        return URLRequest(url: signedUrl, cachePolicy: cachePolicy, timeoutInterval: timeoutInterval)
+        signedRequest.url = request.url?.appending(queryItems: parameters.buildQuery(with: encodedSignature))
+        return signedRequest
     }
     
     func createRequestWithAuthorizationHeader(
@@ -72,7 +69,7 @@ extension OAuthProvider {
         signature: String,
         with parameters: OAuthParameters
     ) async throws -> URLRequest {
-        return request.addToHeader(parameters: parameters, with: signature)
+        return request.appendingToHeader(parameters: parameters, with: signature)
     }
     
     func encodeSignature(httpMethod: String, urlString: String, paremterString: String) -> String {

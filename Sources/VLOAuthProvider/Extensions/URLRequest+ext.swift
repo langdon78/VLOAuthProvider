@@ -8,7 +8,7 @@
 import Foundation
 
 extension URLRequest {
-    func addToHeader(parameters: OAuthParameters, with signature: String) -> URLRequest {
-        parameters.addToHeader(signature: signature, to: self)
+    func appendingToHeader(parameters: OAuthParameters, with signature: String) -> URLRequest {
+        parameters.appendToHeader(signature: signature, to: self)
     }
 }

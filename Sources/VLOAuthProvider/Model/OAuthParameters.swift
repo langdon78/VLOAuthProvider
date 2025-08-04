@@ -80,7 +80,7 @@ public struct OAuthParameters {
         return mutableParameterMap.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
     }
     
-    func addToHeader(signature: String, to request: URLRequest ) -> URLRequest {
+    func appendToHeader(signature: String, to request: URLRequest ) -> URLRequest {
         var mutableParametersMap = parameterMap
         mutableParametersMap[.oauth_signature] = signature
         let flattenedParams = mutableParametersMap.reduce(into: authorizationHeaderPrefix) { result, item in
