@@ -8,5 +8,5 @@
 import Foundation
 
 public protocol EncryptionHandler {
-    static func encrypt(_ message:  String, using hash: HashAlgorithmType, with key: String) -> Result<String, EncryptionError>
+    func encrypt(_ message:  String, with key: String) throws -> String
 }

@@ -10,24 +10,29 @@ import Security
 import CommonCrypto
 
 public class RSAEncryptionHandler: EncryptionHandler {
-    public static func encrypt(
+    let hashAlgorithmType: HashAlgorithmType
+    
+    init(hashAlgorithmType: HashAlgorithmType = .sha1) {
+        self.hashAlgorithmType = hashAlgorithmType
+    }
+    
+    public func encrypt(
         _ message: String,
-        using hash: HashAlgorithmType,
         with privateKeyPEM: String
-    ) -> Result<String, EncryptionError> {
+    ) throws -> String {
 
-        guard !message.isEmpty else { return .failure(.emptyMessage) }
-        guard !privateKeyPEM.isEmpty else { return .failure(.emptyKey) }
-        guard hash == .rsaSha1 else { return .failure(.unexpectedHashType) }
+        guard !message.isEmpty else { throw EncryptionError.emptyMessage }
+        guard !privateKeyPEM.isEmpty else { throw EncryptionError.emptyKey }
+        guard hashAlgorithmType == .sha1 else { throw EncryptionError.unexpectedHashType }
 
         // Convert PEM to SecKey
         guard let privateKey = createSecKeyFromPEM(privateKeyPEM) else {
-            return .failure(.invalidPrivateKey)
+            throw EncryptionError.invalidPrivateKey
         }
 
         // Create SHA1 hash of message
         guard let messageData = message.data(using: .utf8) else {
-            return .failure(.encodingError)
+            throw EncryptionError.encodingError
         }
 
         let hash = sha1Hash(messageData) as CFData
@@ -40,14 +45,14 @@ public class RSAEncryptionHandler: EncryptionHandler {
             hash,
             &error
         ) as? Data else {
-            return .failure(.signingFailed)
+            throw EncryptionError.signingFailed
         }
 
         // Return base64 encoded signature
-        return .success(signature.base64EncodedString())
+        return signature.base64EncodedString()
     }
 
-    private static func createSecKeyFromPEM(_ pemString: String) -> SecKey? {
+    private func createSecKeyFromPEM(_ pemString: String) -> SecKey? {
         // Remove PEM headers and whitespace
         let cleanPEM = pemString
             .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
@@ -67,7 +72,7 @@ public class RSAEncryptionHandler: EncryptionHandler {
         return SecKeyCreateWithData(keyData as CFData, attributes as CFDictionary, nil)
     }
 
-    private static func sha1Hash(_ data: Data) -> Data {
+    private func sha1Hash(_ data: Data) -> Data {
         var hash = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
         data.withUnsafeBytes {
             _ = CC_SHA1($0.baseAddress, CC_LONG(data.count), &hash)
