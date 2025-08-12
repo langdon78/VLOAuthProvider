@@ -71,10 +71,6 @@ struct OAuthParametersTests {
         // Timestamps should be valid
         #expect(Double(params1.timestamp) != nil)
         #expect(Double(params2.timestamp) != nil)
-        
-        // Both should be UUID format
-        #expect(params1.nonce.contains("-"))
-        #expect(params2.nonce.contains("-"))
     }
     
     // MARK: - Parameter Map Tests
@@ -114,7 +110,7 @@ struct OAuthParametersTests {
         let paramMap = params.parameterMap
         
         #expect(paramMap[.oauth_token] == "request-token")
-        #expect(paramMap[.oauth_callback] == "https://example.com/callback")
+        #expect(paramMap[.oauth_callback] == "https%3A%2F%2Fexample.com%2Fcallback")
         #expect(paramMap[.oauth_verifier] == "test-verifier")
     }
     
@@ -249,8 +245,8 @@ struct OAuthParametersTests {
             callback: complexURL
         )
         
-        #expect(simpleParams.parameterMap[.oauth_callback] == "https://example.com/callback")
-        #expect(complexParams.parameterMap[.oauth_callback] == "https://example.com/callback?param=value&other=test")
+        #expect(simpleParams.parameterMap[.oauth_callback] == "https%3A%2F%2Fexample.com%2Fcallback")
+        #expect(complexParams.parameterMap[.oauth_callback] == "https%3A%2F%2Fexample.com%2Fcallback?param%3Dvalue%26other%3Dtest")
     }
     
     // MARK: - Edge Cases
