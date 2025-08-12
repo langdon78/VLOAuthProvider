@@ -9,14 +9,14 @@ import Foundation
 import Security
 import CommonCrypto
 
-public class RSAEncryptionHandler: EncryptionHandler {
+class RSAEncryptionHandler: EncryptionHandler {
     let hashAlgorithmType: HashAlgorithmType
     
     init(hashAlgorithmType: HashAlgorithmType = .sha1) {
         self.hashAlgorithmType = hashAlgorithmType
     }
     
-    public func encrypt(
+    func encrypt(
         _ message: String,
         with privateKeyPEM: String
     ) throws -> String {

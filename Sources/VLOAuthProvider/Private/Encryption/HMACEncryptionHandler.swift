@@ -11,7 +11,7 @@ import CommonCrypto
 /// Handles cryptographic hashing
 /// using supported methods from
 /// CommonCrypto library (i.e. MD5, SHA1 etc.)
-public class HMACEncryptionHandler: EncryptionHandler {
+class HMACEncryptionHandler: EncryptionHandler {
     let hashAlgorithmType: HashAlgorithmType
     
     init(hashAlgorithmType: HashAlgorithmType = .sha1) {
@@ -25,7 +25,7 @@ public class HMACEncryptionHandler: EncryptionHandler {
     ///   - using: hash function used (one of: .sha1, .md5, .sha224, .sha256, .sha384, .sha512, .sha224)
     ///   - with: the key or secret
     /// - Returns: the HMAC encrypted string or EncryptionError
-    public func encrypt(
+    func encrypt(
         _ message:  String,
         with key:   String
     ) throws -> String  {
