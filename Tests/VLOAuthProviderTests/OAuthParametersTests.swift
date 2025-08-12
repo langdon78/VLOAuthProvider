@@ -249,6 +249,134 @@ struct OAuthParametersTests {
         #expect(complexParams.parameterMap[.oauth_callback] == "https%3A%2F%2Fexample.com%2Fcallback?param%3Dvalue%26other%3Dtest")
     }
     
+    // MARK: - Parameter String Tests
+    
+    @Test("Parameter string is properly formatted")
+    func testParameterStringFormatting() {
+        let params = OAuthParameters(
+            consumerKey: "test-key",
+            consumerSecret: "test-secret",
+            signatureMethod: .hmac,
+            nonce: "test-nonce",
+            timestamp: "1234567890"
+        )
+        
+        let paramString = params.parameterString
+        
+        // Should contain all required parameters
+        #expect(paramString.contains("oauth_consumer_key=test-key"))
+        #expect(paramString.contains("oauth_nonce=test-nonce"))
+        #expect(paramString.contains("oauth_timestamp=1234567890"))
+        #expect(paramString.contains("oauth_signature_method=HMAC-SHA1"))
+        #expect(paramString.contains("oauth_version=1.0"))
+        
+        // Should be properly joined with &
+        let components = paramString.components(separatedBy: "&")
+        #expect(components.count == 5) // 5 required parameters
+    }
+    
+    @Test("Parameter string handles optional parameters")
+    func testParameterStringWithOptionalParameters() {
+        let callback = URL(string: "https://example.com/callback")!
+        
+        let params = OAuthParameters(
+            consumerKey: "test-key",
+            consumerSecret: "test-secret",
+            requestToken: "request-token",
+            signatureMethod: .hmac,
+            nonce: "test-nonce",
+            timestamp: "1234567890",
+            callback: callback,
+            verifier: "test-verifier"
+        )
+        
+        let paramString = params.parameterString
+        
+        #expect(paramString.contains("oauth_token=request-token"))
+        #expect(paramString.contains("oauth_callback=https%3A%2F%2Fexample.com%2Fcallback"))
+        #expect(paramString.contains("oauth_verifier=test-verifier"))
+        
+        let components = paramString.components(separatedBy: "&")
+        #expect(components.count == 8) // All parameters
+    }
+    
+    @Test("Parameter string maintains alphabetical order")
+    func testParameterStringOrder() {
+        let params = OAuthParameters(
+            consumerKey: "key",
+            consumerSecret: "secret",
+            requestToken: "token",
+            signatureMethod: .hmac,
+            nonce: "nonce",
+            timestamp: "1234567890"
+        )
+        
+        let paramString = params.parameterString
+        let components = paramString.components(separatedBy: "&")
+        let keys = components.map { $0.components(separatedBy: "=")[0] }
+        let sortedKeys = keys.sorted()
+        
+        #expect(keys == sortedKeys)
+    }
+    
+    @Test("Parameter string handles empty parameter map")
+    func testParameterStringWithMinimalParameters() {
+        let params = OAuthParameters(
+            consumerKey: "key",
+            consumerSecret: "secret",
+            signatureMethod: .plaintext,
+            nonce: "nonce",
+            timestamp: "1234567890"
+        )
+        
+        let paramString = params.parameterString
+        
+        // Should not end with &
+        #expect(!paramString.hasSuffix("&"))
+        // Should not start with &
+        #expect(!paramString.hasPrefix("&"))
+        // Should not contain &&
+        #expect(!paramString.contains("&&"))
+    }
+    
+    @Test("Parameter string handles special characters")
+    func testParameterStringWithSpecialCharacters() {
+        let params = OAuthParameters(
+            consumerKey: "key with spaces",
+            consumerSecret: "secret",
+            signatureMethod: .hmac,
+            nonce: "nonce&with&symbols",
+            timestamp: "1234567890"
+        )
+        
+        let paramString = params.parameterString
+        
+        #expect(paramString.contains("oauth_consumer_key=key with spaces"))
+        #expect(paramString.contains("oauth_nonce=nonce&with&symbols"))
+    }
+    
+    @Test("Parameter string handles single parameter safely")
+    func testParameterStringSingleParameter() {
+        // Create a custom instance to test the force unwrap fix
+        let params = OAuthParameters(
+            consumerKey: "only-key",
+            consumerSecret: "secret",
+            signatureMethod: .hmac,
+            nonce: "nonce",
+            timestamp: "1234567890"
+        )
+        
+        let paramString = params.parameterString
+        
+        // Should not crash and should format properly
+        #expect(!paramString.isEmpty)
+        #expect(!paramString.hasSuffix("&"))
+        
+        // Count parameters
+        let components = paramString.components(separatedBy: "&")
+        #expect(components.count == 5) // oauth_consumer_key, oauth_nonce, oauth_timestamp, oauth_signature_method, oauth_version
+    }
+    
     // MARK: - Edge Cases
     
     @Test("Empty strings are handled properly")

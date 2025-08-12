@@ -43,7 +43,7 @@ public struct OAuthParameters {
     public var parameterString: String {
         parameterMap.reduce(into: "") { result, item  in
             result += "\(item.key)=\(item.value)"
-            if item.key != parameterMap.keys.last! {
+            if let lastParameter = parameterMap.keys.last, item.key != lastParameter {
                 result += "&"
             }
         }
