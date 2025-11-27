@@ -15,17 +15,8 @@ public struct OAuthParameterHelper {
     }
     
     public static func computeNonce(for uuid: UUID = UUID()) -> String {
-        let bytesCount = 8
-        var randomBytes = [UInt8](repeating: 0, count: bytesCount)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytesCount, &randomBytes)
-        
-        let validCharsString = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        let validChars = Array(validCharsString)
-        let charCount = validChars.count
-        
-        return randomBytes.map { randomByte in
-            String(validChars[Int(randomByte) % charCount])
-        }.joined()
+        let uuidString: String = UUID().uuidString
+        return Array(arrayLiteral: uuidString)[0..<8].joined()
     }
     
     public static func serialize(
