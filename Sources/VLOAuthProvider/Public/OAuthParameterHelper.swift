@@ -7,6 +7,7 @@
 
 import Foundation
 import Collections
+import Security
 
 public struct OAuthParameterHelper {
     public static func computeTimestamp(for date: Date = Date.now) -> String {
@@ -14,7 +15,17 @@ public struct OAuthParameterHelper {
     }
     
     public static func computeNonce(for uuid: UUID = UUID()) -> String {
-        uuid.uuidString.data(using: .utf8)?.base64EncodedString() ?? uuid.uuidString
+        let bytesCount = 8
+        var randomBytes = [UInt8](repeating: 0, count: bytesCount)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytesCount, &randomBytes)
+        
+        let validCharsString = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        let validChars = Array(validCharsString)
+        let charCount = validChars.count
+        
+        return randomBytes.map { randomByte in
+            String(validChars[Int(randomByte) % charCount])
+        }.joined()
     }
     
     public static func serialize(
