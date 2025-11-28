@@ -15,8 +15,7 @@ public struct OAuthParameterHelper {
     }
     
     public static func computeNonce(for uuid: UUID = UUID()) -> String {
-        let uuidString: String = UUID().uuidString
-        return Array(arrayLiteral: uuidString)[0..<8].joined()
+        String(uuid.uuidString.prefix(8))
     }
     
     public static func serialize(
