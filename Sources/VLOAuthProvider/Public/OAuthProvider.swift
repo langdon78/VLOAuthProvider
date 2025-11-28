@@ -120,6 +120,10 @@ public class OAuthProvider: AuthenticationProvider {
         else { throw URLError(.badURL) }
         
         var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true)
+        var parameters = parameters
+        if let queryItems = urlComponents?.queryItems {
+            parameters.additionalQueryParams = queryItems
+        }
         urlComponents?.queryItems = nil
         guard let urlForSigning = urlComponents?.url else { throw URLError(.badURL) }
         

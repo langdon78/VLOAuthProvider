@@ -144,6 +144,11 @@ public struct OAuthParameters {
     /// Required when using `.rsa` signature method. Should be in PEM format.
     public var rsaPrivateKey: String?
     
+    /// Additional query parameters passed in with URL request
+    ///
+    /// Needed to sort with OAuth parameters for signature
+    public var additionalQueryParams: [URLQueryItem]
+    
     /// Internal parameter map containing all OAuth parameters.
     ///
     /// Returns an ordered dictionary with OAuth parameter keys and their values,
@@ -170,7 +175,10 @@ public struct OAuthParameters {
     ///
     /// - Returns: Array of query items sorted alphabetically by parameter name.
     public var queryItems: [URLQueryItem] {
-        parameterMap.map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
+        var allParams = parameterMap
+            .map { URLQueryItem(name: $0.key.rawValue, value: $0.value) }
+        allParams.append(contentsOf: additionalQueryParams)
+        return allParams.sorted(by: { $0.name < $1.name })
     }
     
     /// String representation of parameters formatted for OAuth signatures.
@@ -181,9 +189,9 @@ public struct OAuthParameters {
     ///
     /// - Returns: Formatted parameter string ready for signature generation.
     public var parameterString: String {
-        parameterMap.reduce(into: "") { result, item  in
-            result += "\(item.key)=\(item.value)"
-            if let lastParameter = parameterMap.keys.last, item.key != lastParameter {
+        queryItems.reduce(into: "") { result, item  in
+            result += "\(item.name)=\(item.value ?? "")"
+            if let lastParameter = queryItems.last?.name, item.name != lastParameter {
                 result += "&"
             }
         }
@@ -228,7 +236,9 @@ public struct OAuthParameters {
                 nonce: String = OAuthParameterHelper.computeNonce(),
                 timestamp: String = OAuthParameterHelper.computeTimestamp(),
                 callback: URL? = nil,
-                verifier: String? = nil) {
+                verifier: String? = nil,
+                additionalQueryParams: [URLQueryItem] = []
+    ) {
         self.consumerKey = consumerKey
         self.consumerSecret = consumerSecret
         self.requestToken = requestToken
@@ -239,6 +249,7 @@ public struct OAuthParameters {
         self.timestamp = timestamp
         self.callback = callback
         self.verifier = verifier
+        self.additionalQueryParams = additionalQueryParams
     }
     
     /// Internal method to add signature to parameters.
