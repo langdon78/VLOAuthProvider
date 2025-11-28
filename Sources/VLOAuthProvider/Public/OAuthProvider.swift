@@ -119,9 +119,13 @@ public class OAuthProvider: AuthenticationProvider {
               let httpMethod = request.httpMethod
         else { throw URLError(.badURL) }
         
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: true)
+        urlComponents?.queryItems = nil
+        guard let urlForSigning = urlComponents?.url else { throw URLError(.badURL) }
+        
         let signature = try await makeSignature(
             httpMethod: httpMethod,
-            urlString: url.absoluteString,
+            urlString: urlForSigning.absoluteString,
             parameters: parameters
         )
         
