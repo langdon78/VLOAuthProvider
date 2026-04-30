@@ -7,7 +7,6 @@
 
 import Foundation
 import Collections
-import Security
 
 public struct OAuthParameterHelper {
     public static func computeTimestamp(for date: Date = Date.now) -> String {
