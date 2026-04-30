@@ -1,62 +1,57 @@
 //
 //  HMACEncryptionHandler.swift
-//  
-//
-//  Created by James Langdon on 11/5/22.
 //
 
 import Foundation
+#if canImport(CommonCrypto)
 import CommonCrypto
+#else
+import Crypto
+#endif
 
-/// Handles cryptographic hashing
-/// using supported methods from
-/// CommonCrypto library (i.e. MD5, SHA1 etc.)
 class HMACEncryptionHandler: EncryptionHandler {
     let hashAlgorithmType: HashAlgorithmType
-    
+
     init(hashAlgorithmType: HashAlgorithmType = .sha1) {
         self.hashAlgorithmType = hashAlgorithmType
     }
-    
-    /// Function to calculate a hash-based message authentication code (HMAC)
-    ///
-    /// - Parameters:
-    ///   - message: the message to be encrypted
-    ///   - using: hash function used (one of: .sha1, .md5, .sha224, .sha256, .sha384, .sha512, .sha224)
-    ///   - with: the key or secret
-    /// - Returns: the HMAC encrypted string or EncryptionError
-    func encrypt(
-        _ message:  String,
-        with key:   String
-    ) throws -> String  {
-        
-        // Exit early if parameters malformed or type is plaintext
+
+    func encrypt(_ message: String, with key: String) throws -> String {
         guard !message.isEmpty else { throw EncryptionError.emptyMessage }
         guard !key.isEmpty else { throw EncryptionError.emptyKey }
-        
-        // If algorithm is present, apply encryption
+        guard let encodedKey     = key.data(using: .utf8) else { throw EncryptionError.encodingError }
+        guard let encodedMessage = message.data(using: .utf8) else { throw EncryptionError.encodingError }
+
+#if canImport(CommonCrypto)
         guard let hashAlgorithm = hashAlgorithmType.algorithm else {
             throw EncryptionError.unexpectedHashType
         }
-        
-        // Convert key and message to .utf8
-        guard let encodedKey = key.data(using: .utf8) else { throw EncryptionError.encodingError }
-        guard let encodedMessage = message.data(using: .utf8) else { throw EncryptionError.encodingError }
-        
-        // CommonCrypto hash function accepts a pointer to key and message bytes
         return encodedMessage.withUnsafeBytes { messagePtr in
             encodedKey.withUnsafeBytes { keyPtr in
-                // C-style function call
                 var result = hashAlgorithm.allocated
                 CCHmac(hashAlgorithm.ccIdentifier,
-                       keyPtr.baseAddress,
-                       keyPtr.count,
-                       messagePtr.baseAddress,
-                       messagePtr.count,
+                       keyPtr.baseAddress, keyPtr.count,
+                       messagePtr.baseAddress, messagePtr.count,
                        &result)
                 return Data(result).base64EncodedString()
             }
         }
+#else
+        let symmetricKey = SymmetricKey(data: encodedKey)
+        switch hashAlgorithmType {
+        case .md5:
+            return Data(HMAC<Insecure.MD5>.authenticationCode(for: encodedMessage, using: symmetricKey)).base64EncodedString()
+        case .sha1:
+            return Data(HMAC<Insecure.SHA1>.authenticationCode(for: encodedMessage, using: symmetricKey)).base64EncodedString()
+        case .sha256:
+            return Data(HMAC<SHA256>.authenticationCode(for: encodedMessage, using: symmetricKey)).base64EncodedString()
+        case .sha384:
+            return Data(HMAC<SHA384>.authenticationCode(for: encodedMessage, using: symmetricKey)).base64EncodedString()
+        case .sha512:
+            return Data(HMAC<SHA512>.authenticationCode(for: encodedMessage, using: symmetricKey)).base64EncodedString()
+        case .sha224:
+            throw EncryptionError.unexpectedHashType
+        }
+#endif
     }
-    
 }
