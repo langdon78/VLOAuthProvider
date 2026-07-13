@@ -4,103 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Building and Testing
 ```bash
-# Build the package
 swift build
-
-# Run all tests
 swift test
-
-# Run tests for a specific test case
 swift test --filter OAuthProviderTests
-
-# Run a single test method
-swift test --filter testHMACSHA1SignatureGeneration
-
-# Build in release mode
+swift test --filter testHMACSHA1SignatureGeneration   # single test
 swift build -c release
-
-# Clean build artifacts
 swift package clean
-```
-
-### Package Management
-```bash
-# Update dependencies
 swift package update
-
-# Reset package to clean state
-swift package reset
-
-# Generate Xcode project (if needed)
-swift package generate-xcodeproj
 ```
+
+## What this is
+
+An RFC 5849-compliant OAuth 1.0 **client-side** request-signing library. It signs outgoing `URLRequest`s with OAuth 1.0 credentials/signatures — it is not an OAuth server, and does not manage token storage, refresh, or a full authorization flow end-to-end (that orchestration lives one layer up, in `VLOAuthFlowCoordinator`).
 
 ## Architecture
 
-### Core Design Pattern
-VLOAuthProvider implements OAuth 1.0 (RFC 5849) using a **protocol-oriented architecture** with three main abstraction layers:
+Source is split into `Public/` (the API surface) and `Private/` (encryption implementations, encoding helpers) under `Sources/VLOAuthProvider/`.
 
-1. **Authentication Layer** (`AuthenticationProvider` protocol) - High-level interface for creating signed requests
-2. **Encryption Layer** (`EncryptionHandler` protocol) - Pluggable cryptographic implementations 
-3. **Parameter Layer** (`OAuthParameters` struct) - OAuth parameter management and serialization
+- **`AuthenticationProvider`** (protocol, `Public/AuthenticationProvider.swift`) — the abstraction: `createSignedRequest(from:with:as:) async throws -> URLRequest`. Anything conforming to this can be swapped in as the signer.
+- **`OAuthProvider`** (`Public/OAuthProvider.swift`) — the concrete, and only, implementation of `AuthenticationProvider`. Signs an arbitrary `URLRequest` — **it is not restricted to any particular host**; the caller supplies the full request. (Any hardcoded-host restriction you see elsewhere in the `VL*` stack, e.g. in `VLDiscogsClient`, is a decision made at that higher layer, not a limitation of this package.)
+- **`OAuthParameters`** (`Public/Models/OAuthParameters.swift`) — holds consumer/token credentials, signature method, nonce/timestamp (auto-generated if omitted), callback, and verifier. Uses `OrderedDictionary` (swift-collections) for deterministic parameter ordering, required for correct signature base-string construction per RFC 3986/5849.
+- **`TemporaryCredentials`** / **`TokenCredentials`** (`Public/Models/`) — plain structs representing the request-token and access-token pairs from OAuth 1.0's three-legged flow (RFC 5849 §1.1). These are just data holders the caller threads through the flow manually (see below) — there is no built-in flow orchestrator in this package.
+- **Encryption handlers** (`Private/Encryption/`) — `HMACEncryptionHandler` (HMAC-SHA1, plus MD5/SHA256/SHA512 support), `RSAEncryptionHandler` (RSA-SHA1 via `Security`), `PlaintextEncryptionHandler`. All conform to `EncryptionHandler` and are selected via `OAuthSignatureMethod` on `OAuthParameters`.
 
-### Key Components
+### Three-legged flow is manual, not automated
 
-**OAuthProvider** (main class implementing `AuthenticationProvider`)
-- Handles OAuth 1.0 signature generation and request signing
-- Supports three parameter transmission methods: query string, authorization header, form data
-- Uses dependency injection for encryption handlers
+There is no `OAuthServer`/server-side implementation anywhere in this package, despite what the README's feature checklist claims ("Server Implementation — Complete OAuth 1.0 server-side support") — that line does not correspond to any code here; treat it as stale. What actually exists is three separate `createSignedRequest` calls the caller makes explicitly, one per leg (request temporary credentials → direct user to the authorize URL → exchange verifier for token credentials) — see the README's "OAuth 1.0 Three-Legged Flow" section for the exact call sequence. `VLOAuthFlowCoordinator` is what actually orchestrates this sequence for consumers of this package; don't expect this package to drive the flow itself.
 
-**Encryption Handlers**
-- `HMACEncryptionHandler` - HMAC-SHA1, MD5, SHA256, SHA512 support using CommonCrypto
-- `RSAEncryptionHandler` - RSA-SHA1 signatures using Security framework
-- All handlers conform to `EncryptionHandler` protocol for swappable implementations
+### `.formData` transmission crashes — do not use it
 
-**OAuthParameters**
-- Manages OAuth parameter lifecycle (consumer credentials, tokens, nonces, timestamps)
-- Uses `OrderedDictionary` from swift-collections for deterministic parameter ordering
-- Handles RFC 3986 URL encoding requirements automatically
+`ParameterTransmissionType.formData` triggers `fatalError("Form data transmission is not yet supported")` in `OAuthProvider.createSignedRequest` (`Public/OAuthProvider.swift`) — **not** a thrown error, an unrecoverable crash. Only `.header` and `.queryString` are safe to use. The type's own doc comments describe `.formData` as merely "not yet implemented," which understates the actual risk — a caller that reaches this path takes the whole process down, not just that request.
 
-**Server Implementation** (OAuth 1.0 three-legged flow)
-- `OAuthServer` - Complete server-side OAuth 1.0 implementation
-- `OAuthServerDelegate` - Protocol for integrating with storage/validation systems
-- Handles temporary credentials, authorization, and token exchange endpoints
+## Testing
 
-### Signature Methods
-The package implements all three RFC 5849 required signature methods:
-- **HMAC-SHA1** - Most common, uses shared secrets
-- **PLAINTEXT** - Simple concatenation, requires HTTPS
-- **RSA-SHA1** - Public key cryptography, uses private key signing
-
-### Parameter Transmission
-OAuth parameters can be transmitted via:
-- **Query String** (`.queryString`) - Parameters appended to URL
-- **Authorization Header** (`.header`) - Parameters in HTTP Authorization header
-- **Form Data** (`.formData`) - Parameters in request body (not yet implemented)
-
-### Error Handling
-- `EncryptionError` enum for cryptographic failures
-- `OAuthServerError` enum for server-side validation failures
-- All methods use Swift's `throws` pattern for error propagation
-
-### Testing Strategy
-- Uses Swift Testing framework (`@Test` syntax)
-- Comprehensive test coverage including RFC compliance verification
-- Known test vectors from RFC 2202 for HMAC validation
-- Performance benchmarks included
-- Mock implementations for integration testing
-
-### Dependencies
-- **swift-collections** - For `OrderedDictionary` in parameter management
-- **CommonCrypto** - For HMAC implementations
-- **Security** - For RSA signature operations
-
-### RFC 5849 Compliance
-The implementation follows OAuth 1.0 specification strictly:
-- Proper signature base string construction
-- RFC 3986 percent encoding
-- Nonce generation and replay protection
-- Timestamp validation windows
-- Parameter normalization and sorting
+Swift Testing (`@Test`), not XCTest. Includes RFC 2202 HMAC test vectors and RFC-compliance checks — when changing signature/encoding logic, run the full suite, not just a targeted filter, since these are exactly the kind of regressions test vectors exist to catch.
