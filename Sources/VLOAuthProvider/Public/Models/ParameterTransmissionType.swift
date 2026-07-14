@@ -32,7 +32,8 @@
 public enum ParameterTransmissionType {
     /// Transmit OAuth parameters in the request body as form data.
     ///
-    /// **Status**: Not yet implemented
+    /// **Status**: Not yet implemented — `OAuthProvider.createSignedRequest(from:with:as:)`
+    /// throws `OAuthProviderError.unsupportedTransmissionType(.formData)` if used.
     /// **Use case**: Large parameter sets, POST requests
     /// **Security**: Parameters not visible in URLs or logs
     case formData

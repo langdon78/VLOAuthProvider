@@ -112,7 +112,8 @@ public class OAuthProvider: AuthenticationProvider {
     ///
     /// - Returns: A new `URLRequest` with OAuth signature and parameters added
     ///
-    /// - Throws: `URLError.badURL` for malformed URLs, `EncryptionError` for signature failures
+    /// - Throws: `URLError.badURL` for malformed URLs, `EncryptionError` for signature failures,
+    ///   `OAuthProviderError.unsupportedTransmissionType` for `.formData` (not yet implemented)
     public func createSignedRequest(
         from request: URLRequest,
         with parameters: OAuthParameters,
@@ -150,7 +151,7 @@ public class OAuthProvider: AuthenticationProvider {
                 with: parameters
             )
         case .formData:
-            fatalError("Form data transmission is not yet supported")
+            throw OAuthProviderError.unsupportedTransmissionType(.formData)
         }
     }
 }

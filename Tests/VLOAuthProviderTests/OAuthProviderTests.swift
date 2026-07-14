@@ -54,6 +54,19 @@ struct OAuthProviderTests {
         #expect(result != nil)
     }
     
+    // MARK: - Parameter Transmission Tests
+
+    @Test(".formData transmission throws instead of crashing")
+    func testFormDataTransmissionThrows() async throws {
+        let provider = OAuthProvider()
+        let url = URL(string: "https://example.com")!
+        let request = URLRequest(url: url)
+
+        await #expect(throws: OAuthProviderError.self) {
+            try await provider.createSignedRequest(from: request, with: testParameters, as: .formData)
+        }
+    }
+
     // MARK: - RFC 3986 Encoding Tests (via public API)
     
     @Test("RFC 3986 encoding works correctly through signed requests")
