@@ -20,7 +20,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/VLOAuthProvider.git", from: "1.0.0")
+    .package(url: "https://github.com/langdon78/VLOAuthProvider", exact: "0.3.7-alpha")
 ]
 ```
 
@@ -323,6 +323,7 @@ The package includes 64 unit tests covering:
 ## Dependencies
 
 - [swift-collections](https://github.com/apple/swift-collections) - For deterministic parameter ordering
+- [swift-crypto](https://github.com/apple/swift-crypto) - For HMAC-SHA1 on platforms without CommonCrypto, such as Linux
 
 ## License
 
