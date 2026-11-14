@@ -20,7 +20,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/langdon78/VLOAuthProvider", exact: "0.3.7-alpha")
+    .package(url: "https://github.com/langdon78/VLOAuthProvider", exact: "0.3.8-alpha")
 ]
 ```
 
